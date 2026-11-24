@@ -80,13 +80,45 @@ LINE = (
 )
 
 
-def main():
-    output_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
+GATE_MIN = 1
+GATE_MAX = 200
+
+
+def validate_line(line):
+    """Check the entry against the bounty gate before writing anything.
+
+    The gate is 1-200 characters and exactly one line: a line that is
+    too long, empty, or smuggles a second line in via an embedded
+    newline would fail the bounty check, so reject it here with a
+    clear error instead of writing a bad entry file.
+    """
+    if not GATE_MIN <= len(line) <= GATE_MAX:
+        raise ValueError(
+            f"line is {len(line)} characters, outside gate "
+            f"{GATE_MIN}-{GATE_MAX}"
+        )
+    if "\n" in line or "\r" in line:
+        raise ValueError("line must be a single line, no embedded newline")
+    return line
+
+
+def write_entry(line, output_dir):
+    """Write the validated line to entry.txt; return the file path."""
     os.makedirs(output_dir, exist_ok=True)
     path = os.path.join(output_dir, "entry.txt")
     with open(path, "w", encoding="utf-8") as f:
-        f.write(LINE + "\n")
+        f.write(line + "\n")
+    return path
+
+
+def main():
+    # Validate first: a gate failure must abort before any file is
+    # created, so a stale entry.txt can never be mistaken for a pass.
+    validate_line(LINE)
+    output_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
+    path = write_entry(LINE, output_dir)
     print(f"Verified: {len(LINE)} characters, 1 line.")
+    print(f"Wrote {path}")
     print(LINE)
 
 
